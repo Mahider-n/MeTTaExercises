@@ -39,7 +39,6 @@
 ;append lists
 (= (append () $ys) $ys)
 (= (append (:: $x $xs) $ys) (:: $x (append $xs $ys)))
-
 ;quick-sort function
 (= (quick-sort $list)
    (if (<= (length $list) 1)
