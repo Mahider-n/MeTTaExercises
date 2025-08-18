@@ -107,7 +107,10 @@
   (if (== $iters 0)
     $guess
     (let $next (/ (+ $guess (/ $x $guess)) 2)
-      (sqrt-iter $x $next (- $iters 1)))))
+      (sqrt-iter $x $next (- $iters 1))
+    )
+  )
+)
 
 ;get sqrt of num
 (= (sqrt $x)
