@@ -16,20 +16,23 @@
 )
 ; normalize to range [a, b]
 (= (normalize_withSpecificRange $x $a $b)
-   (if (and (>= $x $a) (<= $x $b))
-       $x
-       (+ $a (* (- $b $a) (sigmoid $x)))
-    )
+   (if (and (>= $x $a) (<= $x $b)) $x (+ $a (* (- $b $a) (sigmoid $x))))
 )
 ;normalization using minmax
 ;normalize single value given min and max 
 (= (normalize_usingMinMax $x $min $max)
-  (if (and (>= $x 0) (<= $x 1))
-    $x
-    (/ (- $x $min) (- $max $min)))
+  (if (== $min $max)
+    0
+    (if (and (>= $x 0) (<= $x 1))
+      $x
+      (/ (- $x $min) (- $max $min))
+    )
+  )
 )
 ;normalize list of values using min-max
 ;main
+;base-case
+(= (normalize-list ()) ())
 (= (normalize-list $list)
   (if-equal (size-atom $list) [0]
     ()  ; Empty list returns empty
@@ -57,10 +60,13 @@
 ;normalize using z-score
 ;given value,mean,standard deviation 
 (= (normalize_usingZScore $x $mean $std)
-  (if (and (>= $x 0) (<= $x 1))
-    $x
-    (let $z (/ (- $x $mean) $std)
-            $z
+  (if (== $std 0)
+    0
+    (if (and (>= $x 0) (<= $x 1))
+      $x
+      (let $z (/ (- $x $mean) $std)
+        $z
+      )
     )
   )
 )
@@ -114,7 +120,7 @@
     )
   )
 )
-;tests
+;;;;;;tests;;;;;
 ;!(normalize_usingZScore_dataset 6.0 (5 4 7))
 ;!(normalize_usingZScore_dataset 7.0 (2.0 4.0 6.0 8.0 10.0))
 ;!(normalize_usingZScore 10.0 8 4)
@@ -143,6 +149,7 @@
 ;!(normalize 1.588)  
 ;!(normalize 100) 
 ;!(normalize -100) 
+;!(sigmoid 0)
 
 ;!(sqrt-math 9)
 ;!(sqrt-math -9)
