@@ -29,68 +29,31 @@
     (/ (- $x $min) (- $max $min)))
 )
 ;normalize list of values using min-max
-; get min of two nums
-(= (get_min $a $b)
-  (if (< $a $b) $a $b)
-)
-;get max of two nums
-(= (get_max $a $b)
-  (if (> $a $b) $a $b)
-)
-;find min,max recursively
-;base-case 
-(= (find-min-max Nil)
-  Error-empty-list)
-(= (find-min-max (Cons $head $tail))
-  (if (== $tail Nil)
-    (min-max-pair $head $head)
-    (let $pair (find-min-max $tail)
-      (let $tmin (get-min $pair)
-        (let $tmax (get-max $pair)
-          (min-max-pair (get_min $head $tmin) (get_max $head $tmax)))
-      )
-    )
-  )
-)
-
-; get min from pair
-(= (get-min (min-max-pair $min $max))
-  $min)
-(= (get-min Error-empty-list)
-  Error-empty-list)
-; get max from pair
-(= (get-max (min-max-pair $min $max))
-  $max)
-(= (get-max Error-empty-list)
-  Error-empty-list)
-
-;normalize recursively 
-(= (normalize-helper Nil $min $max)
-  Nil)
-(= (normalize-helper (Cons $h $t) $min $max)
-  (Cons (/ (- $h $min) (- $max $min)) (normalize-helper $t $min $max)))
-
-; create list of zeros, for case min=max
-(= (zero-list Nil)
-  Nil)
-(= (zero-list (Cons $h $t))
-  (Cons 0 (zero-list $t)))
-
-; main
+;main
 (= (normalize-list $list)
-  (let $pair (find-min-max $list)
-    (if (== $pair Error-empty-list)
-      Nil
-      (let $min (get-min $pair)
-        (let $max (get-max $pair)
-          (if (== $min $max)
-            (zero-list $list)
-            (normalize-helper $list $min $max))
+  (if-equal (size-atom $list) [0]
+    ()  ; Empty list returns empty
+    (let $min (min-atom $list)
+      (let $max (max-atom $list)
+        (let $normalized
+          (if-equal $min $max
+            (map-atom $list $x 0.0)  ; If min == max, return list of zeros
+            (map-atom $list $x (/ (- $x $min) (- $max $min))))
+          (superpose $normalized)
         )
       )
     )
   )
+)   
+
+; define max-atom 
+(= (max-atom $list)
+  (if-equal (size-atom $list) [0]
+    [(Error (max-atom $list) EmptyExpression)]
+    (foldl-atom $list (index-atom $list 0) $acc $x (if (> $x $acc) $x $acc))
+  )
 )
+
 ;normalize using z-score
 ;given value,mean,standard deviation 
 (= (normalize_usingZScore $x $mean $std)
@@ -102,88 +65,63 @@
   )
 )
 ;normalize using z-score given value and dataset
-; iteration for square root using newton-raphson method 
-(= (sqrt-iter $x $guess $iters)
-  (if (== $iters 0)
-    $guess
-    (let $next (/ (+ $guess (/ $x $guess)) 2)
-      (sqrt-iter $x $next (- $iters 1))
+; Compute sum of list using foldl-atom
+(= (sum-atom $list)
+  (foldl-atom $list 0 $acc $x (+ $acc $x)))
+
+;mean
+(= (mean $list)
+  (let $len (size-atom $list)
+    (if (== $len 0)
+      ()   
+      (/ (sum-atom $list) $len)
     )
   )
 )
 
-;get sqrt of num
-(= (sqrt $x)
-  (if (< $x 0)
-    Error-negative-sqrt
-    (if (== $x 0)
-      0
-      (sqrt-iter $x $x 10))
-    )
-)
-; get sum of list
-(= (sum Nil) 0)
-(= (sum (Cons $h $t)) (+ $h (sum $t)))
-; get length of list
-(= (length Nil) 0)
-(= (length (Cons $h $t)) (+ 1 (length $t)))
-
-; mean
-(= (mean $list)
-  (let $len (length $list)
-    (if (== $len 0) Error-empty-list (/ (sum $list) $len)))
+;sum of squared differences  
+(= (sum_sq_diff $list $mean)
+  (sum-atom (map-atom $list $x (* (- $x $mean) (- $x $mean))))
 )
 
-; sum of squared differences 
-(= (sum_sq_diff Nil $mean) 0)
-(= (sum_sq_diff (Cons $h $t) $mean)
-  (+ (* (- $h $mean) (- $h $mean)) (sum_sq_diff $t $mean))
-)
-
-; standard deviation of list
+;standard deviation
 (= (std $list)
   (let $m (mean $list)
-    (if (== $m Error-empty-list)
-      Error-empty-list
-      (let $len (length $list)
+    (if (== $m ())
+      ()   
+      (let $len (size-atom $list)
         (if (== $len 0)
-          Error-empty-list
-          (sqrt (/ (sum_sq_diff $list $m) $len)))
-      )
-    )
-  )
-)
-
-;main
-(= (normalize_usingZScore_dataset $x $data)
-  (if (and (>= $x 0) (<= $x 1))
-    $x
-    (let $m (mean $data)
-      (if (== $m Error-empty-list)
-        Error-empty-list
-        (let $s (std $data)
-          (if (== $s Error-empty-list)
-            Error-empty-list
-            (if (== $s 0)
-              Error-zero-std
-              (/ (- $x $m) $s))
-          )
+          ()   
+          (sqrt-math (/ (sum_sq_diff $list $m) $len))
         )
       )
     )
   )
 )
-
+;main
+(= (normalize_usingZScore_dataset $x $data)
+  (let $m (mean $data)
+    (if (== $m ())
+      ()   
+      (let $s (std $data)
+        (if (== $s ())
+          ()   
+          (if (== $s 0)
+            0  ; Zero std returns 0
+            (/ (- $x $m) $s))
+        )
+      )
+    )
+  )
+)
 ;tests
-!(normalize_usingZScore_dataset 6.0 (Cons 5.0 (Cons 4.0 (Cons 7.0 Nil))))
-!(normalize_usingZScore_dataset 7.0 (Cons 2.0 (Cons 4.0 (Cons 6.0 (Cons 8.0 (Cons 10.0 Nil))))))
-
-!(normalize_usingZScore 10.0 8 4)
-!(normalize_usingZScore 0.7 5 2)
+;!(normalize_usingZScore_dataset 6.0 (5 4 7))
+;!(normalize_usingZScore_dataset 7.0 (2.0 4.0 6.0 8.0 10.0))
+;!(normalize_usingZScore 10.0 8 4)
+;!(normalize_usingZScore 0.7 5 2)
 
 ;using minmax
-;!(normalize-list (Cons 5.0 (Cons 0.0 (Cons 10.0 (Cons 15.0 (Cons 92.0 Nil))))))
-;!(find-min-max (Cons 5 (Cons 0 (Cons 10 Nil))))
+;!(normalize-list (5.0 0.0 10.0 15.0 92.0))
 
 ;!(normalize_usingMinMax 0.5 0 10)
 ;!(normalize_usingMinMax 5.0 0 10)
@@ -206,11 +144,8 @@
 ;!(normalize 100) 
 ;!(normalize -100) 
 
-;!(sqrt 9)
-;!(sqrt -9)
-;!(sqrt 9.98)
-;!(sqrt 0)
-;!(sqrt 1)
+;!(sqrt-math 9)
+;!(sqrt-math -9)
 ;!(get_min 2 4)
 ;!(get_max 2 4)
 ;!(normalize -1)
